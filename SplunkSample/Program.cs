@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Globalization;
 using System.Linq;
 using System.Net;
 using Serilog;
@@ -7,6 +6,7 @@ using Serilog.Enrichers;
 using Serilog.Sinks.Splunk;
 using Splunk;
 using Splunk.Client;
+using Context = Splunk.Client.Context;
 
 namespace SplunkSample
 {
@@ -16,12 +16,13 @@ namespace SplunkSample
         {
             ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
 
-            //Generally it is not advised to log to Splunk via HTTP/HTTPS.  This is available for mobile apps and other special cases.
+            //Generally it is not advised to log to Splunk via HTTP/HTTPS due to volume of data  
+            //This is available for mobile apps and other special cases.
          
             const string host = "127.0.0.1";
 
             //Only used for HTTP/HTTPS scenarios
-            var otherContext = new Context(Scheme.Https, host, 8089);
+            var generalSplunkContext = new Context(Scheme.Https, host, 8089);
 
             var transmitterArgs = new TransmitterArgs
             {
@@ -32,13 +33,13 @@ namespace SplunkSample
             const string password = "my splunk password";
             const string splunkIndex = "mysplunktest";
 
-            var splunkContext = new SplunkContext(otherContext, splunkIndex, username, password, null, transmitterArgs);
+            var serilogContext = new SplunkContext(generalSplunkContext, splunkIndex, username, password, null, transmitterArgs);
 
             Log.Logger = new LoggerConfiguration()
                 .Enrich.With(new ThreadIdEnricher())
                 .Enrich.WithMachineName()
                 .WriteTo.ColoredConsole()
-                .WriteTo.SplunkViaHttp(splunkContext, 10, TimeSpan.FromSeconds(5))
+                .WriteTo.SplunkViaHttp(serilogContext, 10, TimeSpan.FromSeconds(5))
 
                 //See http://docs.splunk.com/Documentation/Splunk/6.1.3/Data/Monitornetworkports
                 .WriteTo.SplunkViaUdp(host, 10000)
